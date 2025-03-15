@@ -471,6 +471,51 @@ class QuestionSeeder extends Seeder
                 'text' => 'Televizor tasviri birinchi marta qachon uzatilgan?',
                 'options' => ['1923-yil', '1936-yil', '1941-yil'],
                 'correct_option' => 0
+            ],
+            [
+                'text' => 'Oʻrgimchaklarning qancha turi mavjud?',
+                'options' => ['2400 ga yaqin', '4200 ga yaqin', '1000 ga yaqin'],
+                'correct_option' => 1
+            ],
+            [
+                'text' => 'Televizor tasvirini uzatgan birinchi odamning ismi nima?',
+                'options' => ['Jon Logie Baird', 'Artur Konan Doyl', 'Ser Alex Ferguson'],
+                'correct_option' => 0
+            ],
+            [
+                'text' => 'Televizor tasviri birinchi marta qachon uzatilgan?',
+                'options' => ['1923-yil', '1936-yil', '1941-yil'],
+                'correct_option' => 0
+            ],
+            [
+                'text' => 'Oʻrgimchaklarning qancha turi mavjud?',
+                'options' => ['2400 ga yaqin', '4200 ga yaqin', '1000 ga yaqin'],
+                'correct_option' => 1
+            ],
+            [
+                'text' => 'Televizor tasvirini uzatgan birinchi odamning ismi nima?',
+                'options' => ['Jon Logie Baird', 'Artur Konan Doyl', 'Ser Alex Ferguson'],
+                'correct_option' => 0
+            ],
+            [
+                'text' => 'Televizor tasviri birinchi marta qachon uzatilgan?',
+                'options' => ['1923-yil', '1936-yil', '1941-yil'],
+                'correct_option' => 0
+            ],
+            [
+                'text' => 'Oʻrgimchaklarning qancha turi mavjud?',
+                'options' => ['2400 ga yaqin', '4200 ga yaqin', '1000 ga yaqin'],
+                'correct_option' => 1
+            ],
+            [
+                'text' => 'Televizor tasvirini uzatgan birinchi odamning ismi nima?',
+                'options' => ['Jon Logie Baird', 'Artur Konan Doyl', 'Ser Alex Ferguson'],
+                'correct_option' => 0
+            ],
+            [
+                'text' => 'Televizor tasviri birinchi marta qachon uzatilgan?',
+                'options' => ['1923-yil', '1936-yil', '1941-yil'],
+                'correct_option' => 0
             ]
         ];
 

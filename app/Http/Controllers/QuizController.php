@@ -8,7 +8,6 @@ use App\Models\QuizAttempt;
 use App\Models\QuizAttemptAnswer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class QuizController extends Controller
 {
@@ -36,149 +35,195 @@ class QuizController extends Controller
             'phone' => 'required|string|max:15',
             'birthday' => 'required|date|before:today',
         ]);
-    
+
         $quiz = Quiz::find($request->quiz_id);
         if ($quiz->used) {
             return back()->withErrors(['quiz_id' => 'Bu kod allaqachon ishlatilgan.']);
         }
-    
+
         $attempt = QuizAttempt::create($request->only('quiz_id', 'name', 'address', 'phone', 'birthday'));
         $quiz->update(['used' => true]);
-    
-        $questions = Question::inRandomOrder()->limit(20)->get();
-    
+
+        // Randomize questions once and store in session
+        $questions = Question::inRandomOrder()->limit(100)->get();
+        $questionIds = $questions->pluck('id')->toArray();
+        $request->session()->put('quiz_questions_' . $attempt->id, $questionIds);
+
         $request->session()->put('quiz_start_time', now()->timestamp);
-        $request->session()->put('quiz_questions_' . $attempt->id, $questions->pluck('id')->toArray());
-    
+        $request->session()->put('question_start_time_' . $attempt->id, now()->timestamp);
+
         return Inertia::render('quizzes/quizpage', [
             'attempt' => $attempt,
             'questions' => $questions,
             'currentQuestionIndex' => 0,
             'answers' => [],
+            'timeLeft' => 60,
         ]);
     }
-    
+
     public function next(Request $request, QuizAttempt $attempt)
     {
         $index = $request->input('index', 0);
-        $answer = $request->input('answers.' . $request->input('question_id')); // Get the selected answer for the current question
-    
+        $questionId = $request->input('question_id');
+        $answer = $request->input('answers.' . $questionId);
+
         $sessionKey = 'quiz_answers_' . $attempt->id;
         $answers = $request->session()->get($sessionKey, []);
+
         if ($answer !== null) {
-            $answers[$request->input('question_id')] = $answer;
+            $answers[$questionId] = (int) $answer;
+            $request->session()->put($sessionKey, $answers);
+
+            // Save the answer to the database
+            QuizAttemptAnswer::updateOrCreate(
+                [
+                    'quiz_attempt_id' => $attempt->id,
+                    'question_id' => $questionId,
+                ],
+                ['selected_option' => (int) $answer]
+            );
         }
-        $request->session()->put($sessionKey, $answers);
-    
-        if ($index < 20) {
-            return Inertia::render('quizzes/quizpage', [
-                'attempt' => $attempt,
-                'questions' => Question::whereIn('id', $request->session()->get('quiz_questions_' . $attempt->id))->get(),
-                'currentQuestionIndex' => $index,
-                'answers' => $answers,
+
+        $questionStartKey = 'question_start_time_' . $attempt->id;
+        $questionStartTime = $request->session()->get($questionStartKey);
+        $timeSpent = now()->timestamp - $questionStartTime;
+
+        if ($timeSpent > 60) {
+            $answers[$questionId] = null;
+
+            // If no answer was selected and time is up, save null as incorrect
+            QuizAttemptAnswer::updateOrCreate(
+                [
+                    'quiz_attempt_id' => $attempt->id,
+                    'question_id' => $questionId,
+                ],
+                ['selected_option' => null]
+            );
+        }
+
+        $lastQuestion = Question::find($questionId);
+        $isLastCorrect = $lastQuestion && $answer !== null && $lastQuestion->correct_option === (int) $answer;
+
+        // Use the stored randomized order from session
+        $questionIds = $request->session()->get('quiz_questions_' . $attempt->id);
+        $questions = Question::whereIn('id', $questionIds)
+            ->orderByRaw('FIELD(id, ' . implode(',', $questionIds) . ')')
+            ->get();
+
+        $score = 0;
+        $correctOptions = $questions->pluck('correct_option', 'id')->toArray();
+        foreach ($answers as $qId => $ans) {
+            if (isset($correctOptions[$qId]) && $correctOptions[$qId] === $ans) {
+                $score++;
+            }
+        }
+        $totalEarnings = $score * 10000;
+
+        $totalQuestions = 100;
+        if ($index >= $totalQuestions) {
+            // Calculate final score and update attempt
+            $attempt->update([
+                'score' => $score,
+                'completed_at' => now(),
+                'time_taken' => $request->session()->get('quiz_start_time', now()->timestamp) - now()->timestamp,
             ]);
-        } else {
-            return redirect()->route('quizzes.check-result', $attempt->id);
+
+            // Save all answers to the database
+            foreach ($answers as $qId => $ans) {
+                QuizAttemptAnswer::updateOrCreate(
+                    [
+                        'quiz_attempt_id' => $attempt->id,
+                        'question_id' => $qId,
+                    ],
+                    ['selected_option' => $ans]
+                );
+            }
+
+            $request->session()->forget([
+                'quiz_start_time',
+                'quiz_questions_' . $attempt->id,
+                'quiz_answers_' . $attempt->id,
+                'question_start_time_' . $attempt->id,
+            ]);
+
+            return redirect()->route('quizzes.result', $attempt->id);
         }
-    }    public function checkResult(Request $request, QuizAttempt $attempt)
+
+        $request->session()->put($questionStartKey, now()->timestamp);
+
+        return Inertia::render('quizzes/quizpage', [
+            'attempt' => $attempt,
+            'questions' => $questions,
+            'currentQuestionIndex' => $index,
+            'answers' => $answers,
+            'timeLeft' => 60,
+            'isLastCorrect' => $isLastCorrect,
+            'totalEarnings' => $totalEarnings,
+        ]);
+    }
+
+    public function showCheckResultForm(Request $request)
+    {
+        return Inertia::render('quizzes/checkresult');
+    }
+
+    public function checkResult(Request $request)
     {
         $request->validate([
             'code' => 'required|string|exists:quizzes,code',
             'birthday' => 'required|date|before:today',
         ]);
 
-        if ($request->code !== $attempt->quiz->code || $request->birthday !== $attempt->birthday->format('Y-m-d')) {
-            return back()->withErrors(['code' => 'Kod yoki tug\'ilgan kun noto\'g\'ri.', 'birthday' => 'Kod yoki tug\'ilgan kun noto\'g\'ri.']);
+        $quiz = Quiz::where('code', $request->code)->first();
+        $attempt = QuizAttempt::where('quiz_id', $quiz->id)
+            ->whereDate('birthday', $request->birthday)
+            ->first();
+
+        if (!$attempt) {
+            return back()->withErrors(['code' => 'Kod yoki tug\'ilgan kun noto\'g\'ri.']);
         }
 
-        $answers = $request->session()->get('quiz_answers_' . $attempt->id, []);
-        $questions = Question::whereIn('id', $request->session()->get('quiz_questions_' . $attempt->id))->get()->pluck('correct_option', 'id')->toArray();
-        $score = 0;
-        foreach ($answers as $questionId => $answer) {
-            if (isset($questions[$questionId]) && $questions[$questionId] === $answer) {
-                $score++;
-            }
-        }
-
-        $attempt->update(['score' => $score, 'completed_at' => now()]);
-        $request->session()->forget(['quiz_start_time', 'quiz_questions_' . $attempt->id, 'quiz_answers_' . $attempt->id]);
-
-        return redirect()->route('quizzes.result', $attempt);
+        return redirect()->route('quizzes.result', $attempt->id);
     }
 
-    public function submit(Request $request, QuizAttempt $attempt)
+    public function result(QuizAttempt $attempt)
     {
-        $request->validate([
-            'answers' => 'required|array|size:20',
-            'answers.*' => 'integer|between:0,3',
-        ]);
+        // Fetch all 100 questions randomly (assuming the quiz uses all questions from the pool)
+        $questions = Question::inRandomOrder()->limit(100)->get();
 
-        $questions = Question::whereIn('id', array_keys($request->answers))
-            ->pluck('correct_option', 'id')
-            ->toArray();
+        // Fetch the user's answers
+        $answers = $attempt->answers->pluck('selected_option', 'question_id')->toArray();
 
-        $score = 0;
-        foreach ($request->answers as $questionId => $answer) {
-            QuizAttemptAnswer::create([
-                'quiz_attempt_id' => $attempt->id,
-                'question_id' => $questionId,
-                'selected_option' => $answer,
-            ]);
+        // Prepare data for the frontend, including unanswered questions
+        $questionData = $questions->map(function ($question) use ($answers) {
+            $userAnswer = $answers[$question->id] ?? null;
+            return [
+                'id' => $question->id,
+                'text' => $question->text,
+                'options' => $question->options,
+                'correct_option' => $question->correct_option,
+                'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
+                'user_answer' => $userAnswer !== null ? $question->options[$userAnswer] ?? 'N/A' : 'Javob tanlanmagan',
+                'is_correct' => $userAnswer !== null && $userAnswer === $question->correct_option,
+            ];
+        });
 
-            if (isset($questions[$questionId]) && $questions[$questionId] === $answer) {
-                $score++;
-            }
-        }
-
-        // Calculate time taken
-        $startTime = $request->session()->get('quiz_start_time');
-        $timeTaken = $startTime ? now()->timestamp - $startTime : 0;
-
-        $attempt->update([
-            'score' => $score,
-            'completed_at' => now(),
-            'time_taken' => $timeTaken,
-        ]);
-
-        // Clear session
-        $request->session()->forget('quiz_start_time');
-
-        return redirect()->route('quizzes.result', $attempt);
-    }
-
-    public function result(QuizAttempt $attempt): Response
-    {
         return Inertia::render('quizzes/result', [
             'attempt' => $attempt,
-            'prize' => $attempt->score * 10000,
-        ]);
-    }
-    public function showCheckResultForm()
-    {
-        return Inertia::render('quizzes/checkresult');
-    }
-    public function results(): Response
-    {
-        return Inertia::render('quizzes/results', [
-            'attempts' => QuizAttempt::with('quiz')->get(),
+            'prize' => $attempt->prize ?? ($attempt->score * 10000), // Calculate prize if not set
+            'total_questions' => 100,
+            'questions' => $questionData,
         ]);
     }
 
-    public function resultDetail(QuizAttempt $attempt): Response
-    {
-        return Inertia::render('quizzes/resultdetail', [
-            'attempt' => $attempt->load('quiz', 'answers.question'),
-        ]);
-    }
-
-    public function index(): Response
+    public function index()
     {
         return Inertia::render('quizzes/index', [
             'quizzes' => Quiz::all(),
         ]);
     }
 
-    public function create(): Response
+    public function create()
     {
         return Inertia::render('quizzes/create');
     }
@@ -191,11 +236,10 @@ class QuizController extends Controller
         ]);
 
         Quiz::create($request->all());
-
         return redirect()->route('quizzes.index')->with('success', 'Test muvaffaqiyatli yaratildi.');
     }
 
-    public function edit(Quiz $quiz): Response
+    public function edit(Quiz $quiz)
     {
         return Inertia::render('quizzes/edit', [
             'quiz' => $quiz,
@@ -210,7 +254,6 @@ class QuizController extends Controller
         ]);
 
         $quiz->update($request->all());
-
         return redirect()->route('quizzes.index')->with('success', 'Test muvaffaqiyatli yangilandi.');
     }
 
@@ -218,5 +261,45 @@ class QuizController extends Controller
     {
         $quiz->delete();
         return redirect()->route('quizzes.index')->with('success', 'Test o\'chirildi.');
+    }
+    public function results()
+    {
+        $attempts = QuizAttempt::with('quiz')->get();
+        return Inertia::render('quizzes/quizresults', [
+            'attempts' => $attempts,
+        ]);
+    }
+
+    public function resultDetail(QuizAttempt $attempt)
+    {
+        // Eager-load the quiz relationship
+        $attempt->load('quiz');
+
+        // Fetch all 100 questions (randomly, as a placeholder; adjust if you store the exact set)
+        $questions = Question::inRandomOrder()->limit(100)->get();
+
+        // Fetch the user's answers
+        $answers = $attempt->answers->pluck('selected_option', 'question_id')->toArray();
+
+        // Prepare data for the frontend, including unanswered questions
+        $questionData = $questions->map(function ($question) use ($answers) {
+            $userAnswer = $answers[$question->id] ?? null;
+            return [
+                'id' => $question->id,
+                'text' => $question->text,
+                'options' => $question->options,
+                'correct_option' => $question->correct_option,
+                'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
+                'user_answer' => $userAnswer !== null ? $question->options[$userAnswer] ?? 'N/A' : 'Javob berilmagan',
+                'is_correct' => $userAnswer !== null && $userAnswer === $question->correct_option,
+            ];
+        });
+
+        return Inertia::render('quizzes/resultdetail', [
+            'attempt' => $attempt,
+            'prize' => $attempt->prize ?? ($attempt->score * 10000),
+            'total_questions' => 100,
+            'questions' => $questionData,
+        ]);
     }
 }

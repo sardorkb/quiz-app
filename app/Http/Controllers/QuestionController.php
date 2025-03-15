@@ -5,28 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Question;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class QuestionController extends Controller
 {
     public function index()
-{
-    $questions = Question::paginate(10); // Change 10 to any number of questions per page
+    {
+        $questions = Question::paginate(10);
+        return Inertia::render('questions/index', [
+            'questions' => $questions->items(),
+            'pagination' => [
+                'current_page' => $questions->currentPage(),
+                'last_page' => $questions->lastPage(),
+                'per_page' => $questions->perPage(),
+                'total' => $questions->total(),
+                'links' => $questions->linkCollection()->toArray(),
+            ],
+        ]);
+    }
 
-    return inertia('questions/index', [
-        'questions' => $questions->items(),
-        'pagination' => [
-            'current_page' => $questions->currentPage(),
-            'last_page' => $questions->lastPage(),
-            'per_page' => $questions->perPage(),
-            'total' => $questions->total(),
-            'links' => $questions->linkCollection()->toArray(),
-        ],
-    ]);
-}
-
-
-    public function create(): Response
+    public function create()
     {
         return Inertia::render('questions/create');
     }
@@ -40,11 +37,10 @@ class QuestionController extends Controller
         ]);
 
         Question::create($request->all());
-
         return redirect()->route('questions.index')->with('success', 'Savol qo\'shildi.');
     }
 
-    public function edit(Question $question): Response
+    public function edit(Question $question)
     {
         return Inertia::render('questions/edit', [
             'question' => $question,
@@ -60,7 +56,6 @@ class QuestionController extends Controller
         ]);
 
         $question->update($request->all());
-
         return redirect()->route('questions.index')->with('success', 'Savol yangilandi.');
     }
 

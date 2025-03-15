@@ -1,8 +1,9 @@
+import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import InputError from '@/components/input-error';
 
 interface Question {
     id: number;
@@ -11,122 +12,205 @@ interface Question {
     correct_option: number;
 }
 
-interface Props {
-    attempt: { id: number };
-    questions: Question[];
-    answers: { [key: number]: number };
+interface QuizAttempt {
+    id: number;
+    quiz_id: number;
+    name: string;
 }
 
-export default function QuizPage({ attempt, questions, answers }: Props) {
-    const { data, setData, post } = useForm({ answers: answers || {} });
-    const [lockedAnswers, setLockedAnswers] = useState<{ [key: number]: number }>(answers || {});
-    const [earnings, setEarnings] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(60);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+interface Props {
+    attempt: QuizAttempt;
+    questions: Question[];
+    currentQuestionIndex: number;
+    answers: Record<number, number | null>;
+    timeLeft: number;
+    isLastCorrect?: boolean;
+    totalEarnings?: number;
+}
+
+interface FormData {
+    index: number;
+    question_id: number;
+    answers: Record<number, number | null>;
+}
+
+export default function QuizPage({
+    attempt,
+    questions,
+    currentQuestionIndex: initialIndex,
+    answers: initialAnswers,
+    timeLeft: initialTimeLeft,
+    isLastCorrect,
+    totalEarnings = 0,
+}: Props) {
+    const [timeLeft, setTimeLeft] = useState(initialTimeLeft);
+    const totalQuestions = 100;
+    const currentQuestion = questions[initialIndex];
+
+    const { data, setData, post, processing, errors } = useForm<FormData>({
+        index: initialIndex + 1,
+        question_id: currentQuestion.id,
+        answers: { ...initialAnswers },
+    });
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    handleSubmit();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, []);
-
-    const handleAnswerSelect = (selectedIndex: number) => {
-        const questionId = questions[currentQuestionIndex].id;
-        const correctOption = questions[currentQuestionIndex].correct_option;
-        
-        if (lockedAnswers[questionId] !== undefined) return;
-
-        setData('answers', { ...data.answers, [questionId]: selectedIndex });
-        setLockedAnswers({ ...lockedAnswers, [questionId]: selectedIndex });
-
-        if (selectedIndex === correctOption) {
-            setEarnings((prev) => prev + 10000);
-        }
-    };
-
-    const handleSubmit = () => {
-        post(route('quizzes.submit', attempt.id), { preserveState: true, preserveScroll: true });
-    };
-
-    const nextQuestion = () => {
-        if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
+        if (timeLeft > 0) {
+            const timer = setInterval(() => {
+                setTimeLeft((prev) => prev - 1);
+            }, 1000);
+            return () => clearInterval(timer);
         } else {
-            handleSubmit();
+            handleNext(); // Auto-submit when time runs out
         }
+    }, [timeLeft]);
+
+    const handleNext = () => {
+        console.log('Next clicked');
+        const newIndex = initialIndex + 1;
+        const newQuestionId = questions[newIndex]?.id;
+
+        // If time is up and no answer is selected, mark as incorrect (null)
+        if (timeLeft === 0 && data.answers[currentQuestion.id] === undefined) {
+            setData('answers', {
+                ...data.answers,
+                [currentQuestion.id]: null, // Mark as incorrect
+            });
+        }
+
+        post(route('quizzes.next', attempt.id), {
+            data: {
+                index: newIndex,
+                question_id: newQuestionId,
+                answers: data.answers,
+            },
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                console.log('Navigation successful');
+                setTimeLeft(60);
+                setData({
+                    index: newIndex + 1,
+                    question_id: newQuestionId,
+                    answers: data.answers,
+                });
+            },
+            onError: (err) => {
+                console.error('Navigation error:', err);
+            },
+        });
     };
 
-    const currentQuestion = questions[currentQuestionIndex];
+    const handleOptionChange = (value: string) => {
+        console.log('Option selected:', value);
+        setData('answers', {
+            ...data.answers,
+            [currentQuestion.id]: parseInt(value),
+        });
+    };
+
+    // Determine the color class based on the answer correctness
+    const getQuestionColorClass = (index: number) => {
+        const question = questions[index];
+        const userAnswer = data.answers[question.id];
+        if (userAnswer === null || userAnswer === undefined) {
+            return 'bg-gray-300 text-gray-800'; // No answer selected
+        }
+        if (userAnswer === question.correct_option) {
+            return 'bg-green-500 text-white'; // Correct answer
+        }
+        return 'bg-red-500 text-white'; // Incorrect answer
+    };
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <Head title="Quiz Savollari" />
-            <div className="min-h-screen flex items-center justify-center bg-cover bg-center pt-16" 
-                style={{ backgroundImage: "url('/quiz.jpg')" }}>
-                <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Savol {currentQuestionIndex + 1} / {questions.length}</h2>
-                        <p className="text-lg font-semibold text-red-500">Vaqt qoldi: {timeLeft} sek</p>
-                        <p className="text-lg font-semibold text-green-600">Jami yutug'ingiz: {earnings.toLocaleString()} so'm</p>
-                        
-                        {/* Current Question */}
-                        <div className="mt-6">
-                            <p className="text-xl text-gray-700">{currentQuestion.text}</p>
-                            <div className="space-y-3 mt-4">
+        <>
+            <Head title={`Quiz - Savol ${initialIndex + 1}`} />
+            <div className="min-h-screen bg-gray-100 flex flex-col">
+                <div className="relative flex-1 flex items-center justify-center bg-cover bg-center py-16 px-4" style={{ backgroundImage: "url('/quiz.jpg')" }}>
+                    <div className="absolute inset-0 bg-black/40" />
+                    <div className="relative max-w-4xl mx-auto w-full bg-white/95 p-6 rounded-xl shadow-2xl backdrop-blur-sm">
+                        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                            <div className="text-gray-800 font-semibold">
+                                Savol {initialIndex + 1} / {totalQuestions}
+                            </div>
+                            <div className={`font-bold text-lg ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-800'}`}>
+                                Qolgan vaqt: {timeLeft}s
+                            </div>
+                            <div className="text-green-600 font-semibold">
+                                Jami yutuq: {totalEarnings.toLocaleString()} so'm
+                            </div>
+                        </div>
+
+                        {isLastCorrect !== undefined && initialIndex > 0 && (
+                            <div className={`mb-6 p-4 rounded-lg text-center ${isLastCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {isLastCorrect ? 'To\'g\'ri javob! 10,000 so\'m yutdingiz!' : 'Noto\'g\'ri javob, keyingi safar omad!'}
+                            </div>
+                        )}
+
+                        {/* Display question numbers, but make them non-clickable */}
+                        <div className="flex flex-wrap gap-2 mb-6 justify-center">
+                            {questions.slice(0, totalQuestions).map((_, index) => (
+                                <div
+                                    key={index}
+                                    className={`w-6 h-6 rounded-full text-xs flex items-center justify-center transition-all ${
+                                        index === initialIndex
+                                            ? 'bg-orange-500 text-white'
+                                            : getQuestionColorClass(index)
+                                    }`}
+                                >
+                                    {index + 1}
+                                </div>
+                            ))}
+                        </div>
+
+                        <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-6">
+                            {currentQuestion.text}
+                        </h2>
+
+                        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
+                            <RadioGroup
+                                value={data.answers[currentQuestion.id]?.toString() || ''}
+                                onValueChange={handleOptionChange}
+                                className="space-y-4"
+                            >
                                 {currentQuestion.options.map((option, index) => (
-                                    <div key={index} className="flex items-center space-x-3">
-                                        <Input
-                                            type="radio"
-                                            name={`answer-${currentQuestion.id}`}
-                                            value={index}
-                                            checked={lockedAnswers[currentQuestion.id] === index}
-                                            onChange={() => handleAnswerSelect(index)}
-                                            disabled={lockedAnswers[currentQuestion.id] !== undefined}
-                                            className="cursor-pointer w-5 h-5"
+                                    <div key={index} className="flex items-center space-x-2">
+                                        <RadioGroupItem
+                                            value={index.toString()}
+                                            id={`option-${index}`}
+                                            disabled={processing || timeLeft === 0}
+                                            className="border-orange-500 text-orange-500"
                                         />
                                         <Label
-                                            className={`text-lg cursor-pointer ${
-                                                lockedAnswers[currentQuestion.id] !== undefined && index === currentQuestion.correct_option
-                                                    ? 'text-green-600 font-bold'
-                                                    : lockedAnswers[currentQuestion.id] === index
-                                                    ? 'text-red-500'
-                                                    : 'text-gray-700'
-                                            }`}
+                                            htmlFor={`option-${index}`}
+                                            className="text-gray-700 text-base cursor-pointer"
                                         >
                                             {option}
                                         </Label>
                                     </div>
                                 ))}
+                            </RadioGroup>
+                            <InputError message={errors[`answers.${currentQuestion.id}`]} />
+
+                            <div className="flex justify-end">
+                                {/* Removed the Previous button */}
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all disabled:opacity-75 disabled:cursor-not-allowed"
+                                >
+                                    {initialIndex === totalQuestions - 1 ? 'Yakunlash' : 'Keyingi'}
+                                </Button>
                             </div>
-                            {lockedAnswers[currentQuestion.id] !== undefined && (
-                                <p className="mt-3 text-lg font-semibold text-green-600">
-                                    {lockedAnswers[currentQuestion.id] === currentQuestion.correct_option
-                                        ? "To'g'ri! Siz 10,000 so'm yutdingiz!"
-                                        : `Noto'g'ri! To'g'ri javob: ${currentQuestion.options[currentQuestion.correct_option]}`}
-                                </p>
-                            )}
-                        </div>
-                        
-                        {/* Navigation */}
-                        <Button
-                            type="button"
-                            onClick={nextQuestion}
-                            className="mt-6 bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg w-full"
-                        >
-                            {currentQuestionIndex < questions.length - 1 ? 'Keyingi Savol' : 'Yakunlash'}
-                        </Button>
+                        </form>
                     </div>
                 </div>
+
+                <footer className="bg-gray-800 text-white py-4 text-center">
+                    <p className="text-sm">
+                        © {new Date().getFullYear()} QuizMaster. Barcha huquqlar himoyalangan.
+                    </p>
+                </footer>
             </div>
-        </div>
+        </>
     );
 }
