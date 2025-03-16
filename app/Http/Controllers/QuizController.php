@@ -88,13 +88,13 @@ class QuizController extends Controller
         $timeSpent = now()->timestamp - $questionStartTime;
 
         if ($timeSpent > 60) {
-            $answers[$questionId] = null;
+            $answers[$questionId] = -1; // Use -1 instead of null for "no answer"
             QuizAttemptAnswer::updateOrCreate(
                 [
                     'quiz_attempt_id' => $attempt->id,
                     'question_id' => $questionId,
                 ],
-                ['selected_option' => null]
+                ['selected_option' => -1] // Use -1 instead of null
             );
         }
 
@@ -110,7 +110,7 @@ class QuizController extends Controller
         $score = 0;
         $correctOptions = $questions->pluck('correct_option', 'id')->toArray();
         foreach ($answers as $qId => $ans) {
-            if (isset($correctOptions[$qId]) && $correctOptions[$qId] === $ans) {
+            if ($ans >= 0 && isset($correctOptions[$qId]) && $correctOptions[$qId] === $ans) {
                 $score++;
             }
         }
@@ -200,42 +200,42 @@ class QuizController extends Controller
     }
 
     public function result(QuizAttempt $attempt)
-{
-    // Fetch the user's answers in the order they were submitted
-    $answers = $attempt->answers()
-        ->orderBy('created_at') // Ensures the order matches the sequence of answers given
-        ->get()
-        ->pluck('selected_option', 'question_id')
-        ->toArray();
+    {
+        // Fetch the user's answers in the order they were submitted
+        $answers = $attempt->answers()
+            ->orderBy('created_at')
+            ->get()
+            ->pluck('selected_option', 'question_id')
+            ->toArray();
 
-    // Get the question IDs from the answers in the order they were answered
-    $answeredQuestionIds = array_keys($answers);
+        // Get the question IDs from the answers in the order they were answered
+        $answeredQuestionIds = array_keys($answers);
 
-    // Fetch questions in the same order as they were answered
-    $questions = Question::whereIn('id', $answeredQuestionIds)
-        ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
-        ->get();
+        // Fetch questions in the same order as they were answered
+        $questions = Question::whereIn('id', $answeredQuestionIds)
+            ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
+            ->get();
 
-    // Prepare data for the frontend
-    $questionData = $questions->map(function ($question) use ($answers) {
-        $userAnswer = $answers[$question->id] ?? null;
-        return [
-            'id' => $question->id,
-            'text' => $question->text,
-            'options' => $question->options,
-            'correct_option' => $question->correct_option,
-            'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
-            'user_answer' => $userAnswer !== null ? $question->options[$userAnswer] ?? 'N/A' : 'Javob tanlanmagan',
-            'is_correct' => $userAnswer !== null && $userAnswer === $question->correct_option,
-        ];
-    })->toArray();
+        // Prepare data for the frontend
+        $questionData = $questions->map(function ($question) use ($answers) {
+            $userAnswer = $answers[$question->id] ?? -1; // Default to -1 if not found
+            return [
+                'id' => $question->id,
+                'text' => $question->text,
+                'options' => $question->options,
+                'correct_option' => $question->correct_option,
+                'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
+                'user_answer' => $userAnswer >= 0 ? $question->options[$userAnswer] ?? 'N/A' : 'Javob tanlanmagan',
+                'is_correct' => $userAnswer >= 0 && $userAnswer === $question->correct_option,
+            ];
+        })->toArray();
 
-    return Inertia::render('quizzes/result', [
-        'attempt' => $attempt,
-        'prize' => $attempt->prize ?? ($attempt->score * 10000),
-        'questions' => $questionData,
-    ]);
-}
+        return Inertia::render('quizzes/result', [
+            'attempt' => $attempt,
+            'prize' => $attempt->prize ?? ($attempt->score * 10000),
+            'questions' => $questionData,
+        ]);
+    }
 
     public function index()
     {
@@ -283,6 +283,7 @@ class QuizController extends Controller
         $quiz->delete();
         return redirect()->route('quizzes.index')->with('success', 'Test o\'chirildi.');
     }
+
     public function results()
     {
         $attempts = QuizAttempt::with('quiz')->get();
@@ -292,43 +293,43 @@ class QuizController extends Controller
     }
 
     public function resultDetail(QuizAttempt $attempt)
-{
-    // Eager-load the quiz relationship
-    $attempt->load('quiz');
+    {
+        // Eager-load the quiz relationship
+        $attempt->load('quiz');
 
-    // Fetch the user's answers in the order they were submitted
-    $answers = $attempt->answers()
-        ->orderBy('created_at')
-        ->get()
-        ->pluck('selected_option', 'question_id')
-        ->toArray();
+        // Fetch the user's answers in the order they were submitted
+        $answers = $attempt->answers()
+            ->orderBy('created_at')
+            ->get()
+            ->pluck('selected_option', 'question_id')
+            ->toArray();
 
-    // Get the question IDs from the answers in the order they were answered
-    $answeredQuestionIds = array_keys($answers);
+        // Get the question IDs from the answers in the order they were answered
+        $answeredQuestionIds = array_keys($answers);
 
-    // Fetch questions in the same order as they were answered
-    $questions = Question::whereIn('id', $answeredQuestionIds)
-        ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
-        ->get();
+        // Fetch questions in the same order as they were answered
+        $questions = Question::whereIn('id', $answeredQuestionIds)
+            ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
+            ->get();
 
-    // Prepare data for the frontend
-    $questionData = $questions->map(function ($question) use ($answers) {
-        $userAnswer = $answers[$question->id] ?? null;
-        return [
-            'id' => $question->id,
-            'text' => $question->text,
-            'options' => $question->options,
-            'correct_option' => $question->correct_option,
-            'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
-            'user_answer' => $userAnswer !== null ? $question->options[$userAnswer] ?? 'N/A' : 'Javob berilmagan',
-            'is_correct' => $userAnswer !== null && $userAnswer === $question->correct_option,
-        ];
-    })->toArray();
+        // Prepare data for the frontend
+        $questionData = $questions->map(function ($question) use ($answers) {
+            $userAnswer = $answers[$question->id] ?? -1; // Default to -1 if not found
+            return [
+                'id' => $question->id,
+                'text' => $question->text,
+                'options' => $question->options,
+                'correct_option' => $question->correct_option,
+                'correct_answer' => $question->options[$question->correct_option] ?? 'N/A',
+                'user_answer' => $userAnswer >= 0 ? $question->options[$userAnswer] ?? 'N/A' : 'Javob berilmagan',
+                'is_correct' => $userAnswer >= 0 && $userAnswer === $question->correct_option,
+            ];
+        })->toArray();
 
-    return Inertia::render('quizzes/resultdetail', [
-        'attempt' => $attempt,
-        'prize' => $attempt->prize ?? ($attempt->score * 10000),
-        'questions' => $questionData,
-    ]);
-}
+        return Inertia::render('quizzes/resultdetail', [
+            'attempt' => $attempt,
+            'prize' => $attempt->prize ?? ($attempt->score * 10000),
+            'questions' => $questionData,
+        ]);
+    }
 }

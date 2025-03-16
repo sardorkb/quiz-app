@@ -31,7 +31,7 @@ interface Props {
 interface FormData {
     index: number;
     question_id: number;
-    answers: Record<number, number | null>;
+    answers: Record<number, number>;
 }
 
 export default function QuizPage({
@@ -72,7 +72,7 @@ export default function QuizPage({
         if (timeLeft === 0 && data.answers[currentQuestion.id] === undefined) {
             setData('answers', {
                 ...data.answers,
-                [currentQuestion.id]: null,
+                [currentQuestion.id]: -1, // Use -1 instead of null for "no answer"
             });
         }
 
