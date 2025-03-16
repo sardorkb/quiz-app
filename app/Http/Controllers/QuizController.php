@@ -8,6 +8,7 @@ use App\Models\QuizAttempt;
 use App\Models\QuizAttemptAnswer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class QuizController extends Controller
 {
@@ -104,7 +105,7 @@ class QuizController extends Controller
         // Use the stored randomized order from session
         $questionIds = $request->session()->get('quiz_questions_' . $attempt->id);
         $questions = Question::whereIn('id', $questionIds)
-            ->orderByRaw('FIELD(id, ' . implode(',', $questionIds) . ')')
+            ->orderByRaw('array_position(ARRAY[' . implode(',', $questionIds) . ']::bigint[], id)')
             ->get();
 
         $score = 0;
@@ -213,7 +214,7 @@ class QuizController extends Controller
 
         // Fetch questions in the same order as they were answered
         $questions = Question::whereIn('id', $answeredQuestionIds)
-            ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
+            ->orderByRaw('array_position(ARRAY[' . implode(',', $answeredQuestionIds) . ']::bigint[], id)')
             ->get();
 
         // Prepare data for the frontend
@@ -309,7 +310,7 @@ class QuizController extends Controller
 
         // Fetch questions in the same order as they were answered
         $questions = Question::whereIn('id', $answeredQuestionIds)
-            ->orderByRaw('FIELD(id, ' . implode(',', $answeredQuestionIds) . ')')
+            ->orderByRaw('array_position(ARRAY[' . implode(',', $answeredQuestionIds) . ']::bigint[], id)')
             ->get();
 
         // Prepare data for the frontend
