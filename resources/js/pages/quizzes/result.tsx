@@ -64,7 +64,7 @@ export default function Result({ attempt, prize, questions }: Props) {
                                         Tabriklaymiz, {attempt.name}!
                                     </h1>
                                     <p className="text-xl text-gray-700">
-                                        Siz {totalAnsweredQuestions}ta savolni to'g'ri javob berdingiz!
+                                        Siz {totalAnsweredQuestions} ta savolga to'g'ri javob berdingiz!
                                     </p>
                                 </>
                             ) : (
@@ -73,16 +73,13 @@ export default function Result({ attempt, prize, questions }: Props) {
                                         Afsuski, {attempt.name}, siz yutqazdingiz!
                                     </h1>
                                     <p className="text-xl text-gray-700">
-                                        Siz {totalAnsweredQuestions} ta savoldan {attempt.score} tasiga to'g'ri javob berdingiz, lekin birinchi xato bilan yakunlandi.
+                                        Siz {totalAnsweredQuestions} ta savoldan {attempt.score} tasiga to'g'ri javob berdingiz.
                                     </p>
+                                    
                                 </>
                             )}
                             <p className="text-2xl font-semibold mt-2">
-                                {isWinner ? (
-                                    <span className="text-green-600">Sizning yutug'ingiz: {prize.toLocaleString()} so'm</span>
-                                ) : (
-                                    <span className="text-red-600">Omadignzi keyingi safar yana sinab ko'ring.</span>
-                                )}
+                                <span className="text-green-600">Sizning yutug'ingiz: {prize.toLocaleString()} so'm</span>
                             </p>
                         </div>
 
@@ -95,11 +92,10 @@ export default function Result({ attempt, prize, questions }: Props) {
                                 {currentQuestions.map((question, index) => (
                                     <div
                                         key={question.id}
-                                        className={`p-4 rounded-lg ${
-                                            question.is_correct
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
-                                        }`}
+                                        className={`p-4 rounded-lg ${question.is_correct
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
+                                            }`}
                                     >
                                         <p className="font-medium">
                                             Savol {indexOfFirstQuestion + index + 1}: {question.text}
@@ -135,11 +131,10 @@ export default function Result({ attempt, prize, questions }: Props) {
                                     <button
                                         key={number}
                                         onClick={() => paginate(number)}
-                                        className={`px-4 py-2 rounded-lg ${
-                                            currentPage === number
-                                                ? 'bg-orange-500 text-white'
-                                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                                        } transition-all`}
+                                        className={`px-4 py-2 rounded-lg ${currentPage === number
+                                            ? 'bg-orange-500 text-white'
+                                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                            } transition-all`}
                                     >
                                         {number}
                                     </button>
