@@ -66,7 +66,7 @@ export default function QuizDetails({ quiz }: Props) {
                                 <div className="grid gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="name" className="text-gray-700 font-medium">
-                                            Ism
+                                            F.I.Sh.
                                         </Label>
                                         <Input
                                             id="name"
@@ -98,7 +98,7 @@ export default function QuizDetails({ quiz }: Props) {
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="phone" className="text-gray-700 font-medium">
-                                            Telefon
+                                            Telefon raqam
                                         </Label>
                                         <Input
                                             id="phone"
@@ -145,7 +145,7 @@ export default function QuizDetails({ quiz }: Props) {
                 {/* Footer */}
                 <footer className="bg-gray-800 text-white py-4 text-center">
                     <p className="text-sm">
-                        © {new Date().getFullYear()} QuizMaster. Barcha huquqlar himoyalangan.
+                        © {new Date().getFullYear()} Millioner bo'laman. Barcha huquqlar himoyalangan.
                     </p>
                 </footer>
             </div>

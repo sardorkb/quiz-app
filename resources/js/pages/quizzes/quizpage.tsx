@@ -69,11 +69,10 @@ export default function QuizPage({
         const newIndex = initialIndex + 1;
         const newQuestionId = questions[newIndex]?.id;
 
-        // If time is up and no answer is selected, mark as incorrect (null)
         if (timeLeft === 0 && data.answers[currentQuestion.id] === undefined) {
             setData('answers', {
                 ...data.answers,
-                [currentQuestion.id]: null, // Mark as incorrect
+                [currentQuestion.id]: null,
             });
         }
 
@@ -108,22 +107,9 @@ export default function QuizPage({
         });
     };
 
-    // Determine the color class based on the answer correctness
-    const getQuestionColorClass = (index: number) => {
-        const question = questions[index];
-        const userAnswer = data.answers[question.id];
-        if (userAnswer === null || userAnswer === undefined) {
-            return 'bg-gray-300 text-gray-800'; // No answer selected
-        }
-        if (userAnswer === question.correct_option) {
-            return 'bg-green-500 text-white'; // Correct answer
-        }
-        return 'bg-red-500 text-white'; // Incorrect answer
-    };
-
     return (
         <>
-            <Head title={`Quiz - Savol ${initialIndex + 1}`} />
+            <Head title={`Test - Savol ${initialIndex + 1}`} />
             <div className="min-h-screen bg-gray-100 flex flex-col">
                 <div className="relative flex-1 flex items-center justify-center bg-cover bg-center py-16 px-4" style={{ backgroundImage: "url('/quiz.jpg')" }}>
                     <div className="absolute inset-0 bg-black/40" />
@@ -145,22 +131,6 @@ export default function QuizPage({
                                 {isLastCorrect ? 'To\'g\'ri javob! 10,000 so\'m yutdingiz!' : 'Noto\'g\'ri javob, keyingi safar omad!'}
                             </div>
                         )}
-
-                        {/* Display question numbers, but make them non-clickable */}
-                        <div className="flex flex-wrap gap-2 mb-6 justify-center">
-                            {questions.slice(0, totalQuestions).map((_, index) => (
-                                <div
-                                    key={index}
-                                    className={`w-6 h-6 rounded-full text-xs flex items-center justify-center transition-all ${
-                                        index === initialIndex
-                                            ? 'bg-orange-500 text-white'
-                                            : getQuestionColorClass(index)
-                                    }`}
-                                >
-                                    {index + 1}
-                                </div>
-                            ))}
-                        </div>
 
                         <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-6">
                             {currentQuestion.text}
@@ -192,7 +162,6 @@ export default function QuizPage({
                             <InputError message={errors[`answers.${currentQuestion.id}`]} />
 
                             <div className="flex justify-end">
-                                {/* Removed the Previous button */}
                                 <Button
                                     type="submit"
                                     disabled={processing}
@@ -207,7 +176,7 @@ export default function QuizPage({
 
                 <footer className="bg-gray-800 text-white py-4 text-center">
                     <p className="text-sm">
-                        © {new Date().getFullYear()} QuizMaster. Barcha huquqlar himoyalangan.
+                        © {new Date().getFullYear()} Millioner bo'laman. Barcha huquqlar himoyalangan.
                     </p>
                 </footer>
             </div>

@@ -22,7 +22,7 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="Quizga Xush Kelibsiz" />
+            <Head title="Testga Xush Kelibsiz" />
             <div className="min-h-screen bg-gray-100 flex flex-col">
                 {/* Hero Section */}
                 <div
@@ -39,7 +39,7 @@ export default function Welcome() {
                                 Kitob O'qing!
                             </h1>
                             <p className="text-xl md:text-2xl font-medium drop-shadow-md">
-                                Va millionerga aylaning
+                                va millionerga aylaning
                             </p>
                             <div className="flex gap-4 text-sm md:text-base">
                                 <div className="bg-orange-500/80 px-4 py-2 rounded-lg backdrop-blur-sm">
@@ -60,7 +60,7 @@ export default function Welcome() {
                         {/* Right Section - Form */}
                         <div className="bg-white/95 p-6 rounded-xl shadow-2xl backdrop-blur-sm transform transition-all hover:shadow-xl">
                             <h2 className="text-2xl font-semibold mb-6 text-gray-800 text-center">
-                                Quizni Boshlash
+                                Testni boshlash
                             </h2>
                             <form onSubmit={submitAttempt} className="space-y-6">
                                 <div className="grid gap-2">
@@ -68,7 +68,7 @@ export default function Welcome() {
                                         htmlFor="code"
                                         className="text-gray-700 font-medium"
                                     >
-                                        Quiz Kodi
+                                        Test Kodi
                                     </Label>
                                     <Input
                                         id="code"
@@ -76,7 +76,7 @@ export default function Welcome() {
                                         onChange={(e) => setData('code', e.target.value)}
                                         required
                                         disabled={processing}
-                                        placeholder="Masalan: QUIZ123"
+                                        placeholder="Masalan: TEST123"
                                         className="border-gray-300 focus:ring-orange-500 focus:border-orange-500 text-black placeholder-gray-400 py-3 transition-all"
                                     />
                                     <InputError message={errors.code} />
@@ -87,7 +87,7 @@ export default function Welcome() {
                                         disabled={processing}
                                         className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-75 disabled:cursor-not-allowed"
                                     >
-                                        {processing ? 'Yuklanmoqda...' : 'Testni Boshlash'}
+                                        {processing ? 'Yuklanmoqda...' : 'Testni boshlash'}
                                     </Button>
                                     <Button
                                         type="button"
@@ -95,7 +95,7 @@ export default function Welcome() {
                                         disabled={processing}
                                         className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-all disabled:opacity-75 disabled:cursor-not-allowed"
                                     >
-                                        Natijalarni Tekshirish
+                                        Natijalarni tekshirish
                                     </Button>
                                 </div>
                             </form>
@@ -106,7 +106,7 @@ export default function Welcome() {
                 {/* Footer Section */}
                 <footer className="bg-gray-800 text-white py-4 text-center">
                     <p className="text-sm">
-                        © {new Date().getFullYear()} QuizMaster. Barcha huquqlar himoyalangan.
+                        © {new Date().getFullYear()} Millioner bo'laman. Barcha huquqlar himoyalangan.
                     </p>
                 </footer>
             </div>

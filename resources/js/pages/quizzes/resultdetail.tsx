@@ -33,7 +33,6 @@ interface QuizAttempt {
 interface Props {
     attempt: QuizAttempt;
     prize: number;
-    total_questions: number;
     questions: Question[];
 }
 
@@ -43,15 +42,21 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Tafsilotlar', href: '#' },
 ];
 
-export default function ResultDetail({ attempt, prize, total_questions, questions }: Props) {
+export default function ResultDetail({ attempt, prize, questions }: Props) {
     const [currentPage, setCurrentPage] = React.useState(1);
     const questionsPerPage = 10;
-    const totalPages = Math.ceil(total_questions / questionsPerPage);
+
+    // Filter questions to ensure only answered ones are shown (backend should already do this)
+    const answeredQuestions = questions.filter(
+        (question) => question.user_answer !== 'Javob berilmagan' && question.user_answer !== 'No answer'
+    );
+    const totalAnsweredQuestions = answeredQuestions.length;
+    const totalPages = Math.ceil(totalAnsweredQuestions / questionsPerPage);
 
     // Get current questions for the page
     const indexOfLastQuestion = currentPage * questionsPerPage;
     const indexOfFirstQuestion = indexOfLastQuestion - questionsPerPage;
-    const currentQuestions = questions.slice(indexOfFirstQuestion, indexOfLastQuestion);
+    const currentQuestions = answeredQuestions.slice(indexOfFirstQuestion, indexOfLastQuestion);
 
     // Handle page change
     const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -73,7 +78,7 @@ export default function ResultDetail({ attempt, prize, total_questions, question
                                 {attempt.quiz?.code ?? 'N/A'}
                             </p>
                             <p>
-                                <strong>Jami Ball:</strong> {attempt.score} / {total_questions}
+                                <strong>Jami Ball:</strong> {attempt.score} / {totalAnsweredQuestions}
                             </p>
                             <p>
                                 <strong>Yutuq:</strong> {prize.toLocaleString('uz-UZ')} so'm
@@ -89,66 +94,72 @@ export default function ResultDetail({ attempt, prize, total_questions, question
                         </div>
 
                         {/* Questions Breakdown */}
-                        <div className="space-y-6">
-                            <h3 className="text-xl font-semibold text-gray-800">
-                                Savollar va Javoblar
-                            </h3>
-                            {currentQuestions.map((question, index) => (
-                                <div
-                                    key={question.id}
-                                    className={`p-4 rounded-lg ${
-                                        question.user_answer === 'No answer'
-                                            ? 'bg-gray-100 text-gray-800'
-                                            : question.is_correct
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
-                                    }`}
-                                >
-                                    <p className="font-medium">
-                                        Savol {indexOfFirstQuestion + index + 1}: {question.text}
-                                    </p>
-                                    <p className="mt-2">
-                                        <span className="font-semibold">Sizning javobingiz: </span>
-                                        {question.user_answer}
-                                    </p>
-                                    <p>
-                                        <span className="font-semibold">To'g'ri javob: </span>
-                                        {question.correct_answer}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                        {totalAnsweredQuestions > 0 ? (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-semibold text-gray-800">
+                                    Savollar va Javoblar
+                                </h3>
+                                {currentQuestions.map((question, index) => (
+                                    <div
+                                        key={question.id}
+                                        className={`p-4 rounded-lg ${
+                                            question.is_correct
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}
+                                    >
+                                        <p className="font-medium">
+                                            Savol {indexOfFirstQuestion + index + 1}: {question.text}
+                                        </p>
+                                        <p className="mt-2">
+                                            <span className="font-semibold">Sizning javobingiz: </span>
+                                            {question.user_answer}
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold">To'g'ri javob: </span>
+                                            {question.correct_answer}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-700">
+                                Hech qanday savolga javob berilmagan.
+                            </div>
+                        )}
 
-                        {/* Pagination */}
-                        <div className="mt-6 flex justify-center items-center gap-2">
-                            <button
-                                onClick={() => paginate(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-all"
-                            >
-                                Oldingi
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                        {/* Pagination - Show only if there are multiple pages */}
+                        {totalAnsweredQuestions > 0 && totalPages > 1 && (
+                            <div className="mt-6 flex justify-center items-center gap-2">
                                 <button
-                                    key={number}
-                                    onClick={() => paginate(number)}
-                                    className={`px-4 py-2 rounded-lg ${
-                                        currentPage === number
-                                            ? 'bg-orange-500 text-white'
-                                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                                    } transition-all`}
+                                    onClick={() => paginate(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-all"
                                 >
-                                    {number}
+                                    Oldingi
                                 </button>
-                            ))}
-                            <button
-                                onClick={() => paginate(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-all"
-                            >
-                                Keyingi
-                            </button>
-                        </div>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                                    <button
+                                        key={number}
+                                        onClick={() => paginate(number)}
+                                        className={`px-4 py-2 rounded-lg ${
+                                            currentPage === number
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                        } transition-all`}
+                                    >
+                                        {number}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => paginate(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-all"
+                                >
+                                    Keyingi
+                                </button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

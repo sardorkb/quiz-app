@@ -11,7 +11,7 @@ class QuizSeeder extends Seeder
     {
         for ($i = 1; $i <= 100; $i++) {
             Quiz::create([
-                'title' => "Quiz #$i",
+                'title' => "Test №$i",
                 'code' => (string) $i,
                 'used' => false,
             ]);
