@@ -68,9 +68,9 @@ export default function QuizPage({
         console.log('Next clicked');
         const currentAnswer = data.answers[currentQuestion.id];
 
-        // If no answer is selected, explicitly mark it as unanswered and end the quiz
+        // If no answer is selected, mark as unanswered and end the quiz
         if (currentAnswer === undefined || currentAnswer === null) {
-            console.log('No answer selected, ending quiz');
+            console.log('Javob belgilanmadi, test yakunlandi.');
             const updatedAnswers = {
                 ...data.answers,
                 [currentQuestion.id]: -1, // Mark as unanswered
@@ -93,9 +93,9 @@ export default function QuizPage({
             return; // Stop further execution
         }
 
-        // If an answer is selected, proceed to the next question
+        // Proceed to the next question if an answer is selected
         const newIndex = initialIndex + 1;
-        const newQuestionId = questions[newIndex]?.id;
+        const newQuestionId = questions[newIndex]?.id || null;
 
         post(route('quizzes.next', attempt.id), {
             data: {
@@ -110,7 +110,7 @@ export default function QuizPage({
                 setTimeLeft(60);
                 setData({
                     index: newIndex + 1,
-                    question_id: newQuestionId,
+                    question_id: newQuestionId || 0, // Fallback if no next question
                     answers: data.answers,
                 });
             },
