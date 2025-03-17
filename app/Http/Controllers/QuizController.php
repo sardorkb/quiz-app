@@ -71,6 +71,7 @@ class QuizController extends Controller
         $sessionKey = 'quiz_answers_' . $attempt->id;
         $answers = $request->session()->get($sessionKey, []);
 
+        // Store the answer (or -1 if unanswered)
         if ($answer !== null) {
             $answers[$questionId] = (int) $answer;
             $request->session()->put($sessionKey, $answers);
@@ -89,18 +90,18 @@ class QuizController extends Controller
         $timeSpent = now()->timestamp - $questionStartTime;
 
         if ($timeSpent > 60) {
-            $answers[$questionId] = -1; // Use -1 instead of null for "no answer"
+            $answers[$questionId] = -1; // Mark as unanswered if time runs out
             QuizAttemptAnswer::updateOrCreate(
                 [
                     'quiz_attempt_id' => $attempt->id,
                     'question_id' => $questionId,
                 ],
-                ['selected_option' => -1] // Use -1 instead of null
+                ['selected_option' => -1]
             );
         }
 
         $lastQuestion = Question::find($questionId);
-        $isLastCorrect = $lastQuestion && $answer !== null && $lastQuestion->correct_option === (int) $answer;
+        $isLastCorrect = $lastQuestion && $answer !== null && $answer !== -1 && $lastQuestion->correct_option === (int) $answer;
 
         // Use the stored randomized order from session
         $questionIds = $request->session()->get('quiz_questions_' . $attempt->id);
@@ -108,6 +109,7 @@ class QuizController extends Controller
             ->orderByRaw('array_position(ARRAY[' . implode(',', $questionIds) . ']::bigint[], id)')
             ->get();
 
+        // Calculate score and earnings
         $score = 0;
         $correctOptions = $questions->pluck('correct_option', 'id')->toArray();
         foreach ($answers as $qId => $ans) {
@@ -117,8 +119,8 @@ class QuizController extends Controller
         }
         $totalEarnings = $score * 10000;
 
-        // Check if last answer was incorrect
-        if (!$isLastCorrect && $answer !== null) {
+        // End quiz if last answer was incorrect or unanswered
+        if (!$isLastCorrect) {
             $attempt->update([
                 'score' => $score,
                 'completed_at' => now(),
@@ -202,24 +204,20 @@ class QuizController extends Controller
 
     public function result(QuizAttempt $attempt)
     {
-        // Fetch the user's answers in the order they were submitted
         $answers = $attempt->answers()
             ->orderBy('created_at')
             ->get()
             ->pluck('selected_option', 'question_id')
             ->toArray();
 
-        // Get the question IDs from the answers in the order they were answered
         $answeredQuestionIds = array_keys($answers);
 
-        // Fetch questions in the same order as they were answered
         $questions = Question::whereIn('id', $answeredQuestionIds)
             ->orderByRaw('array_position(ARRAY[' . implode(',', $answeredQuestionIds) . ']::bigint[], id)')
             ->get();
 
-        // Prepare data for the frontend
         $questionData = $questions->map(function ($question) use ($answers) {
-            $userAnswer = $answers[$question->id] ?? -1; // Default to -1 if not found
+            $userAnswer = $answers[$question->id] ?? -1;
             return [
                 'id' => $question->id,
                 'text' => $question->text,
@@ -295,27 +293,22 @@ class QuizController extends Controller
 
     public function resultDetail(QuizAttempt $attempt)
     {
-        // Eager-load the quiz relationship
         $attempt->load('quiz');
 
-        // Fetch the user's answers in the order they were submitted
         $answers = $attempt->answers()
             ->orderBy('created_at')
             ->get()
             ->pluck('selected_option', 'question_id')
             ->toArray();
 
-        // Get the question IDs from the answers in the order they were answered
         $answeredQuestionIds = array_keys($answers);
 
-        // Fetch questions in the same order as they were answered
         $questions = Question::whereIn('id', $answeredQuestionIds)
             ->orderByRaw('array_position(ARRAY[' . implode(',', $answeredQuestionIds) . ']::bigint[], id)')
             ->get();
 
-        // Prepare data for the frontend
         $questionData = $questions->map(function ($question) use ($answers) {
-            $userAnswer = $answers[$question->id] ?? -1; // Default to -1 if not found
+            $userAnswer = $answers[$question->id] ?? -1;
             return [
                 'id' => $question->id,
                 'text' => $question->text,
