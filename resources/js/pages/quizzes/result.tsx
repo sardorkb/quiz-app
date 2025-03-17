@@ -75,6 +75,9 @@ export default function Result({ attempt, prize, questions }: Props) {
                                     <p className="text-xl text-gray-700">
                                         Siz {totalAnsweredQuestions} ta savoldan {attempt.score} tasiga to'g'ri javob berdingiz, lekin birinchi xato bilan yakunlandi.
                                     </p>
+                                    <p className="text-2xl font-semibold mt-2">
+                                        <span className="text-green-600">Sizning yutug'ingiz: {prize.toLocaleString()} so'm</span>
+                                    </p>
                                 </>
                             )}
                             <p className="text-2xl font-semibold mt-2">
@@ -95,11 +98,10 @@ export default function Result({ attempt, prize, questions }: Props) {
                                 {currentQuestions.map((question, index) => (
                                     <div
                                         key={question.id}
-                                        className={`p-4 rounded-lg ${
-                                            question.is_correct
+                                        className={`p-4 rounded-lg ${question.is_correct
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-red-100 text-red-800'
-                                        }`}
+                                            }`}
                                     >
                                         <p className="font-medium">
                                             Savol {indexOfFirstQuestion + index + 1}: {question.text}
@@ -135,11 +137,10 @@ export default function Result({ attempt, prize, questions }: Props) {
                                     <button
                                         key={number}
                                         onClick={() => paginate(number)}
-                                        className={`px-4 py-2 rounded-lg ${
-                                            currentPage === number
+                                        className={`px-4 py-2 rounded-lg ${currentPage === number
                                                 ? 'bg-orange-500 text-white'
                                                 : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                                        } transition-all`}
+                                            } transition-all`}
                                     >
                                         {number}
                                     </button>
