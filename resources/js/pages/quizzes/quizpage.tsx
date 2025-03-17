@@ -66,15 +66,36 @@ export default function QuizPage({
 
     const handleNext = () => {
         console.log('Next clicked');
+        const currentAnswer = data.answers[currentQuestion.id];
+
+        // If no answer is selected, explicitly mark it as unanswered and end the quiz
+        if (currentAnswer === undefined || currentAnswer === null) {
+            console.log('No answer selected, ending quiz');
+            const updatedAnswers = {
+                ...data.answers,
+                [currentQuestion.id]: -1, // Mark as unanswered
+            };
+
+            post(route('quizzes.next', attempt.id), {
+                data: {
+                    index: initialIndex + 1,
+                    question_id: currentQuestion.id,
+                    answers: updatedAnswers,
+                },
+                preserveState: false, // Allow redirect to result page
+                onSuccess: () => {
+                    console.log('Quiz ended due to no answer');
+                },
+                onError: (err) => {
+                    console.error('Error ending quiz:', err);
+                },
+            });
+            return; // Stop further execution
+        }
+
+        // If an answer is selected, proceed to the next question
         const newIndex = initialIndex + 1;
         const newQuestionId = questions[newIndex]?.id;
-
-        if (timeLeft === 0 && data.answers[currentQuestion.id] === undefined) {
-            setData('answers', {
-                ...data.answers,
-                [currentQuestion.id]: -1, // Use -1 instead of null for "no answer"
-            });
-        }
 
         post(route('quizzes.next', attempt.id), {
             data: {
