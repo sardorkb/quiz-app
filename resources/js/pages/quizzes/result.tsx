@@ -84,7 +84,7 @@ export default function Result({ attempt, prize, questions }: Props) {
                                 {isWinner ? (
                                     <span className="text-green-600">Sizning yutug'ingiz: {prize.toLocaleString()} so'm</span>
                                 ) : (
-                                    <span className="text-red-600">Omadignzi keyingi safar yana sinab ko'ring.</span>
+                                    <span className="text-red-600">Yanada ko'proq kitob o'qing va millionerga aylaning.</span>
                                 )}
                             </p>
                         </div>
