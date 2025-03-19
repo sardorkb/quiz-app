@@ -73,7 +73,7 @@ export default function Result({ attempt, prize, questions }: Props) {
                                         Afsuski, {attempt.name}, siz yutqazdingiz!
                                     </h1>
                                     <p className="text-xl text-gray-700">
-                                        Siz {totalAnsweredQuestions} ta savoldan {attempt.score} tasiga to'g'ri javob berdingiz, lekin birinchi xato bilan yakunlandi.
+                                        Siz {totalAnsweredQuestions} ta savoldan {attempt.score} tasiga to'g'ri javob berdingiz.
                                     </p>
                                     <p className="text-2xl font-semibold mt-2">
                                         <span className="text-green-600">Sizning yutug'ingiz: {prize.toLocaleString()} so'm</span>
